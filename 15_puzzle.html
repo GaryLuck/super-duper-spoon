@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Classic 15 Puzzle</title>
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: #faf8ef;
+        margin: 0;
+        padding-top: 40px;
+        color: #776e65;
+    }
+    h1 {
+        font-size: 48px;
+        margin: 0 0 20px 0;
+    }
+    #board {
+        position: relative;
+        width: 404px;
+        height: 404px;
+        background-color: #bbada0;
+        border-radius: 6px;
+    }
+    .tile {
+        position: absolute;
+        width: 96px;
+        height: 96px;
+        background-color: #eee4da;
+        color: #776e65;
+        font-size: 44px;
+        font-weight: bold;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: transform 0.15s ease-in-out;
+        user-select: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .tile:hover {
+        background-color: #f3e9e0;
+    }
+    #message {
+        margin-top: 20px;
+        font-size: 28px;
+        font-weight: bold;
+        color: #4caf50;
+        height: 35px;
+    }
+    .controls {
+        margin-top: 10px;
+    }
+    button {
+        padding: 12px 24px;
+        font-size: 18px;
+        font-weight: bold;
+        cursor: pointer;
+        background-color: #8f7a66;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        transition: background-color 0.15s;
+    }
+    button:hover {
+        background-color: #9f8b77;
+    }
+</style>
+</head>
+<body>
+
+<h1>15 Puzzle</h1>
+<div id="board"></div>
+<div id="message"></div>
+<div class="controls">
+    <button onclick="shuffle()">Shuffle</button>
+</div>
+
+<script>
+    const SIZE = 4;
+    const TILE_SIZE = 100;
+    const OFFSET = 4;
+    let tiles = [];
+    let emptyPos = { r: SIZE - 1, c: SIZE - 1 };
+    let isShuffling = false;
+
+    const board = document.getElementById('board');
+    const message = document.getElementById('message');
+
+    // Initialize the board
+    function init() {
+        board.innerHTML = '';
+        tiles = [];
+        let num = 1;
+        for (let r = 0; r < SIZE; r++) {
+            for (let c = 0; c < SIZE; c++) {
+                if (r === SIZE - 1 && c === SIZE - 1) {
+                    tiles.push(0); // 0 represents the empty space
+                    continue;
+                }
+                const tile = document.createElement('div');
+                tile.classList.add('tile');
+                tile.textContent = num;
+                tile.id = `tile-${num}`;
+
+                // Set initial position
+                setTilePosition(tile, r, c);
+
+                // Add click event
+                tile.addEventListener('click', () => moveTile(parseInt(tile.textContent)));
+
+                board.appendChild(tile);
+                tiles.push(num);
+                num++;
+            }
+        }
+        emptyPos = { r: SIZE - 1, c: SIZE - 1 };
+        message.textContent = '';
+    }
+
+    function setTilePosition(tile, r, c) {
+        tile.style.transform = `translate(${c * TILE_SIZE + OFFSET}px, ${r * TILE_SIZE + OFFSET}px)`;
+    }
+
+    function getIndex(r, c) {
+        return r * SIZE + c;
+    }
+
+    function moveTile(num) {
+        const index = tiles.indexOf(num);
+        const r = Math.floor(index / SIZE);
+        const c = index % SIZE;
+
+        // Check if adjacent to empty space
+        if ((Math.abs(r - emptyPos.r) === 1 && c === emptyPos.c) ||
+            (Math.abs(c - emptyPos.c) === 1 && r === emptyPos.r)) {
+
+            // Swap in array
+            const emptyIndex = getIndex(emptyPos.r, emptyPos.c);
+            tiles[emptyIndex] = num;
+            tiles[index] = 0;
+
+            // Update empty position
+            const newEmptyR = r;
+            const newEmptyC = c;
+
+            // Update DOM
+            const tile = document.getElementById(`tile-${num}`);
+            setTilePosition(tile, emptyPos.r, emptyPos.c);
+
+            emptyPos = { r: newEmptyR, c: newEmptyC };
+
+            if (!isShuffling) {
+                checkWin();
+            }
+        }
+    }
+
+    function checkWin() {
+        for (let i = 0; i < SIZE * SIZE - 1; i++) {
+            if (tiles[i] !== i + 1) {
+                return false;
+            }
+        }
+        message.textContent = 'You Win!';
+        return true;
+    }
+
+    function shuffle() {
+        isShuffling = true;
+        message.textContent = '';
+
+        // Make random valid moves
+        for (let i = 0; i < 300; i++) {
+            const validMoves = [];
+            const r = emptyPos.r;
+            const c = emptyPos.c;
+
+            if (r > 0) validMoves.push(tiles[getIndex(r - 1, c)]);
+            if (r < SIZE - 1) validMoves.push(tiles[getIndex(r + 1, c)]);
+            if (c > 0) validMoves.push(tiles[getIndex(r, c - 1)]);
+            if (c < SIZE - 1) validMoves.push(tiles[getIndex(r, c + 1)]);
+
+            const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+            moveTileDirect(randomMove);
+        }
+
+        // Update DOM positions after shuffling
+        for (let i = 0; i < tiles.length; i++) {
+            const num = tiles[i];
+            if (num !== 0) {
+                const r = Math.floor(i / SIZE);
+                const c = i % SIZE;
+                const tile = document.getElementById(`tile-${num}`);
+                // Temporary remove transition for instant shuffle
+                tile.style.transition = 'none';
+                setTilePosition(tile, r, c);
+                // Force reflow
+                void tile.offsetWidth;
+                tile.style.transition = 'transform 0.15s ease-in-out';
+            } else {
+                emptyPos = { r: Math.floor(i / SIZE), c: i % SIZE };
+            }
+        }
+
+        isShuffling = false;
+    }
+
+    // Internal move without DOM animation for faster shuffle
+    function moveTileDirect(num) {
+        const index = tiles.indexOf(num);
+        const r = Math.floor(index / SIZE);
+        const c = index % SIZE;
+
+        const emptyIndex = getIndex(emptyPos.r, emptyPos.c);
+        tiles[emptyIndex] = num;
+        tiles[index] = 0;
+
+        emptyPos = { r, c };
+    }
+
+    // Initialize and shuffle on load
+    init();
+    shuffle();
+</script>
+</body>
+</html>
